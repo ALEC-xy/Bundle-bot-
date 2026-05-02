@@ -57,30 +57,43 @@ async def rpc_post(client: httpx.AsyncClient, method: str, params: list) -> dict
 
 # ── Helius REST API ───────────────────────────────────────────────────────────
 
+
 async def helius_get_token_holders(client: httpx.AsyncClient, mint: str, limit: int = 20) -> list:
-    """Use Helius getTokenAccounts — most reliable way to get holders."""
+    """Use Helius REST API to get token holders."""
     if not HELIUS_API_KEY:
         return []
-    url = f"https://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
-    payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getTokenAccounts",
-        "params": {
-            "mint": mint,
-            "limit": limit,
-            "options": {"showZeroBalance": False}
-        }
-    }
+    # Method 1: Helius getTokenAccounts REST
+    url = f"https://api.helius.xyz/v0/token-accounts?api-key={HELIUS_API_KEY}"
     try:
-        r = await client.post(url, json=payload, timeout=30)
+        r = await client.post(url, json={"mint": mint, "limit": limit}, timeout=30)
         r.raise_for_status()
         data = r.json()
-        accounts = data.get("result", {}).get("token_accounts", [])
-        return accounts
+        if isinstance(data, list) and len(data) > 0:
+            return [{"owner": h.get("owner"), "amount": float(h.get("amount", 0)) / 1_000_000} for h in data if h.get("owner")]
     except Exception as e:
-        logger.warning(f"helius getTokenAccounts error: {e}")
-        return []
+        logger.warning(f"helius token-accounts REST error: {e}")
+
+    # Method 2: Helius DAS getAssetsByOwner fallback via standard RPC largest accounts
+    try:
+        url2 = f"https://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "getTokenLargestAccounts", "params": [mint, {"commitment": "finalized"}]}
+        r2 = await client.post(url2, json=payload, timeout=30)
+        r2.raise_for_status()
+        accounts = r2.json().get("result", {}).get("value", [])
+        if accounts:
+            result = []
+            for acc in accounts[:limit]:
+                info = await client.post(url2, json={"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [acc["address"], {"encoding": "jsonParsed"}]}, timeout=15)
+                try:
+                    owner = info.json()["result"]["data"]["parsed"]["info"]["owner"]
+                    result.append({"owner": owner, "amount": float(acc.get("uiAmount") or 0)})
+                except Exception:
+                    pass
+            return result
+    except Exception as e:
+        logger.warning(f"Helius largest accounts fallback error: {e}")
+
+    return []
 
 
 async def helius_get_transactions(client: httpx.AsyncClient, address: str, limit: int = 20) -> list:
