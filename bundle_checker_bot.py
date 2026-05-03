@@ -105,7 +105,7 @@ async def get_holders(client, mint):
         if owner and amount > 0 and owner not in EXCLUDE_ADDRS:
             holders.append({"owner": owner, "amount": amount})
     holders.sort(key=lambda x: x["amount"], reverse=True)
-            holders = [h for h in holders if h["owner"] not in EXCLUDE_ADDRS]
+    holders = [h for h in holders if h["owner"] not in EXCLUDE_ADDRS]
 
     return holders
 
