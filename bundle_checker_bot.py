@@ -46,7 +46,7 @@ EXCLUDE_ADDRS = {
     "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
     "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
     "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
-}
+} it
 
 PUMP_MINT_AUTH = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
 
@@ -105,6 +105,8 @@ async def get_holders(client, mint):
         if owner and amount > 0 and owner not in EXCLUDE_ADDRS:
             holders.append({"owner": owner, "amount": amount})
     holders.sort(key=lambda x: x["amount"], reverse=True)
+            holders = [h for h in holders if h["owner"] not in EXCLUDE_ADDRS]
+
     return holders
 
 
