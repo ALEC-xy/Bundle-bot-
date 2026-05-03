@@ -98,15 +98,35 @@ async def get_holders(client, mint):
             logger.warning(f"getTokenAccounts: {e}")
             break
 
-    holders = []
-    for acc in all_accounts:
-        owner = acc.get("owner", "")
-        amount = float(acc.get("amount", 0))
-        if owner and amount > 0 and owner not in EXCLUDE_ADDRS:
-            holders.append({"owner": owner, "amount": amount})
-            holders = sorted([h for h in holders if h["owner"] not in EXCLUDE_ADDRS], key=lambda x: x["amount"], reverse=True)
+            holders = []
+        for acc in all_accounts:
+            owner = acc.get("owner", "")
+            amount = float(acc.get("amount", 0))
+            if owner and amount > 0 and owner not in EXCLUDE_ADDRS:
+                holders.append({"owner": owner, "amount": amount})
 
-    return holders
+        PROGRAM_OWNERS = {
+            "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+            "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+            "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+            "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+        }
+
+        async def is_program_account(owner):
+            try:
+                result = await rpc(client, "getAccountInfo", [owner, {"encoding": "base64"}])
+                if not result:
+                    return False
+                return result.get("owner", "") in PROGRAM_OWNERS
+            except Exception:
+                return False
+
+        top25 = holders[:25]
+        program_checks = await asyncio.gather(*[is_program_account(h["owner"]) for h in top25])
+        holders = [h for h, is_prog in zip(top25, program_checks) if not is_prog] + holders[25:]
+        holders.sort(key=lambda x: x["amount"], reverse=True)
+        return holders
+
 
 
 async def get_helius_txs(client, address, limit=20):
