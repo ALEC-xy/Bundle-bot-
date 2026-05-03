@@ -1,7 +1,5 @@
-“””
-Solana Bundle Checker PRO - Telegram Bot
-Complete rewrite using correct Helius API
-“””
+# Solana Bundle Checker PRO
+
 
 import os
 import asyncio
