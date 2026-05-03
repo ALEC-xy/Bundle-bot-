@@ -110,12 +110,17 @@ async def get_holders(client, mint):
 
     # Step 3: Check top 25 holders - filter out LP/bonding curve program accounts
     async def is_lp_or_program(owner):
-        try:
+                try:
             result = await rpc(client, "getAccountInfo", [owner, {"encoding": "base64"}])
             if not result:
                 return False
             owner_program = result.get("owner", "")
-            return owner_program in LP_PROGRAMS
+            if owner_program in LP_PROGRAMS:
+                return True
+            space = result.get("space", 0)
+            if space in (300, 165):
+                return True
+            return False
         except Exception:
             return False
 
