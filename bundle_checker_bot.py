@@ -23,7 +23,7 @@ HELIUS_RPC = f"https://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}" if HELI
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
+o
 # ── Core RPC ──────────────────────────────────────────────────────────────────
 
 async def rpc(client: httpx.AsyncClient, method: str, params: list) -> any:
@@ -101,7 +101,17 @@ async def get_holders(client: httpx.AsyncClient, mint: str) -> list:
         except Exception:
             continue
 
-    holders.sort(key=lambda x: x["amount"], reverse=True)
+    # Filter out known program/bonding curve addresses
+EXCLUDE = {
+    "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg",  # pump.fun bonding curve
+    "Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1",  # pump.fun fee account
+    "CebN5WGQ4jvEPvsVU4EoHEpgznyZKRC8HCeWoUpieTpq",  # pump.fun authority
+    "4wTV81svKSf3iFE5qFJi9gGqpvunfHcqgSJ1AXcE4czP",  # pump.fun migration
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",   # token program
+    "11111111111111111111111111111111",                 # system program
+}
+holders = [h for h in holders if h["owner"] not in EXCLUDE]
+
     return holders
 
 
